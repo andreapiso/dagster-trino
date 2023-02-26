@@ -9,6 +9,7 @@ import dagster._check as check
 
 from .configs import define_trino_config
 
+import pandas as pd
 
 import trino
 
@@ -27,17 +28,20 @@ class TrinoConnection:
             ("Missing config: Password required for Trino resource.")
         )
 
+        auth = trino.auth.BasicAuthentication(config['user'], config['password'])
+
         self.conn_args = {
             k: config.get(k)
             for k in (
                 "host",
                 "user",
-                "password",
+                "auth",
                 "port",
                 "http_scheme"
             )
             if config.get(k) is not None
         }
+        self.conn_args['auth'] = auth
 
         self.log = log
 
@@ -46,6 +50,8 @@ class TrinoConnection:
     def get_connection(self) -> Iterator[trino.dbapi.Connection]:
         """Gets a connection to Trino as a context manager."""
         conn = trino.dbapi.connect(**self.conn_args)
+        yield conn
+        conn.close()
 
     @public
     def execute_query(
@@ -53,6 +59,7 @@ class TrinoConnection:
         sql: str,
         parameters: Optional[Mapping[Any, Any]] = None,
         fetch_results: bool = False,
+        return_pandas: bool = False
     ):
         """Execute a query in Trino.
         Args:
@@ -81,7 +88,11 @@ class TrinoConnection:
                 parameters = dict(parameters) if isinstance(parameters, Mapping) else parameters
                 cursor.execute(sql, parameters)
                 if fetch_results:
-                    return cursor.fetchall()
+                    result = cursor.fetchall()
+                    if return_pandas:
+                        return pd.DataFrame(result, columns=[i[0] for i in cursor.description])
+                    else:
+                        return result
 
 
 @resource(
