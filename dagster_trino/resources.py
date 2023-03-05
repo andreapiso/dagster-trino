@@ -37,7 +37,9 @@ class TrinoConnection:
                 "user",
                 "auth",
                 "port",
-                "http_scheme"
+                "http_scheme",
+                "catalog",
+                "schema"
             )
             if config.get(k) is not None
         }

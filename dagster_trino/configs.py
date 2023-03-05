@@ -33,12 +33,27 @@ def define_trino_config():
         description="The http scheme used to connect to the Trino Cluster.", 
         is_required=False
     )
+
+    schema = Field(
+        StringSource, 
+        description="The schema to be used by Trino if not provided by the query.", 
+        is_required=False
+    )
+
+    catalog = Field(
+        StringSource, 
+        description="The catalog to be used by Trino if not provided by the query.", 
+        is_required=False
+    )
+
     return {
         "host": host,
         "user": user,
         "password": password,
         "port": port,
-        "http_scheme": http_scheme
+        "http_scheme": http_scheme,
+        "schema": schema,
+        "catalog": catalog
     }
 
     
