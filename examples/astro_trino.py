@@ -1,8 +1,5 @@
 import sys
 
-#TODO remove path append when moving to dagster-trino as module
-sys.path.append('../')
-
 import dagster_trino
 print(dagster_trino.__version__)
 
