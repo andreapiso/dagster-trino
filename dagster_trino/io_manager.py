@@ -59,9 +59,9 @@ class TrinoDbClient(DbClient):
 
         if table_slice.partition_dimensions and len(table_slice.partition_dimensions) > 0:
             query = f"SELECT {col_str} FROM {table_slice.schema}.{table_slice.table} WHERE\n"
-            return query + _partition_where_clause(table_slice.partition_dimensions)
+            return f'({query}{_partition_where_clause(table_slice.partition_dimensions)})'
         else:
-            return f"""SELECT {col_str} FROM {table_slice.schema}.{table_slice.table}"""
+            return f'(SELECT {col_str} FROM {table_slice.schema}.{table_slice.table})'
         
     @staticmethod
     def delete_table_slice(context: OutputContext, table_slice: TableSlice, connection) -> None:
