@@ -36,3 +36,28 @@ class TrinoQueryTypeHandler(DbTypeHandler):
     @property
     def supported_types(self):
         return [str]
+    
+class GCSTrinoTypeHandler(DbTypeHandler):
+    def handle_output(
+        self, context: OutputContext, table_slice: TableSlice, obj: str, connection
+    ):
+        """Loads content of a parquet file saved at the given location into a Trino managed table."""
+        pass
+
+    def load_input(
+        self, context: InputContext, table_slice: TableSlice, connection
+    ) -> str:
+        """Loads the paths of object storage files populating the table"""
+        #TODO: work on partitioning
+        query = f'''
+            SELECT DISTINCT "$path" FROM {table_slice.schema}.{table_slice.table}
+        '''
+        try:
+            res = connection.execute(query)
+        except TrinoQueryError as e:
+            # TODO add messaging around this functionality is supported only with the Hive connector
+            raise e
+        return [filepath for pathlist in res for filepath in pathlist]
+    
+
+        
