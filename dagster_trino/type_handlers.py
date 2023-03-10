@@ -4,6 +4,8 @@ from .io_manager import TrinoDbClient
 
 from trino.exceptions import TrinoQueryError
 
+from typing import List
+
 
 class TrinoQueryTypeHandler(DbTypeHandler):
     def handle_output(
@@ -41,12 +43,12 @@ class GCSTrinoTypeHandler(DbTypeHandler):
     def handle_output(
         self, context: OutputContext, table_slice: TableSlice, obj: str, connection
     ):
-        """Loads content of a parquet file saved at the given location into a Trino managed table."""
+        """Loads content of files saved at the given location into a Trino managed table."""
         pass
 
     def load_input(
         self, context: InputContext, table_slice: TableSlice, connection
-    ) -> str:
+    ) -> List[str]:
         """Loads the paths of object storage files populating the table"""
         #TODO: work on partitioning
         query = f'''
@@ -57,7 +59,9 @@ class GCSTrinoTypeHandler(DbTypeHandler):
         except TrinoQueryError as e:
             # TODO add messaging around this functionality is supported only with the Hive connector
             raise e
-        return [filepath for pathlist in res for filepath in pathlist]
+        l:List[str] = [filepath for pathlist in res for filepath in pathlist]
+        return l
     
-
-        
+    @property
+    def supported_types(self):
+        return [List[str], list]
