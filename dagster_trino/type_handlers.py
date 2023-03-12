@@ -8,6 +8,7 @@ from trino.exceptions import TrinoQueryError
 import pandas as pd
 import pyarrow
 from pyarrow import parquet
+from .utils import arrow as arrow_utils
 import fsspec
 
 import os
@@ -52,36 +53,17 @@ class FilePathTypeHandler(DbTypeHandler):
         if len(obj) == 0:
             raise FileNotFoundError("The list of files to load in the table is empty.")
         table_dir = os.path.dirname(obj[0])
+        #FIXME: gs config should be passed through resource instead
+        fs = fsspec.filesystem(protocol='gs', project='trino-catalog', token=os.environ['GCS_TOKEN']) 
+        arrow_schema = parquet.read_schema(obj[0], filesystem=fs)
+        trino_columns = arrow_utils.get_trino_columns_from_arrow_schema(arrow_schema)
         tmp_table_name = f'{table_slice.schema}.tmp_dagster_{table_slice.table}'
         drop_query = f'''
             DROP TABLE IF EXISTS {tmp_table_name}
         '''
         create_query = f'''
             CREATE TABLE {tmp_table_name}(
-                id DOUBLE,
-                number DOUBLE,
-                nationwide_number DOUBLE,
-                name VARCHAR,
-                original_name VARCHAR,
-                sex VARCHAR,
-                year_of_birth DOUBLE,
-                nationality VARCHAR,
-                military_civilian VARCHAR,
-                selection VARCHAR,
-                year_of_selection DOUBLE,
-                mission_number DOUBLE,
-                total_number_of_missions DOUBLE,
-                occupation VARCHAR,
-                year_of_mission DOUBLE,
-                mission_title VARCHAR,
-                ascend_shuttle VARCHAR,
-                in_orbit VARCHAR,
-                descend_shuttle VARCHAR,
-                hours_mission DOUBLE,
-                total_hrs_sum DOUBLE,
-                field21 DOUBLE,
-                eva_hrs_mission DOUBLE,
-                total_eva_hrs DOUBLE
+                {trino_columns}
             )
             WITH (
                 format = 'PARQUET',
