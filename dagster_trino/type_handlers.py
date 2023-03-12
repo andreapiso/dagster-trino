@@ -10,6 +10,8 @@ import pyarrow
 from pyarrow import parquet
 import fsspec
 
+import os
+
 class TrinoQueryTypeHandler(DbTypeHandler):
     def handle_output(
         self, context: OutputContext, table_slice: TableSlice, obj: TrinoQuery, connection
@@ -47,7 +49,68 @@ class FilePathTypeHandler(DbTypeHandler):
         self, context: OutputContext, table_slice: TableSlice, obj: TableFilePaths, connection
     ):
         """Loads content of files saved at the given location into a Trino managed table."""
-        pass
+        if len(obj) == 0:
+            raise FileNotFoundError("The list of files to load in the table is empty.")
+        table_dir = os.path.dirname(obj[0])
+        tmp_table_name = f'{table_slice.schema}.tmp_dagster_{table_slice.table}'
+        drop_query = f'''
+            DROP TABLE IF EXISTS {tmp_table_name}
+        '''
+        create_query = f'''
+            CREATE TABLE {tmp_table_name}(
+                id DOUBLE,
+                number DOUBLE,
+                nationwide_number DOUBLE,
+                name VARCHAR,
+                original_name VARCHAR,
+                sex VARCHAR,
+                year_of_birth DOUBLE,
+                nationality VARCHAR,
+                military_civilian VARCHAR,
+                selection VARCHAR,
+                year_of_selection DOUBLE,
+                mission_number DOUBLE,
+                total_number_of_missions DOUBLE,
+                occupation VARCHAR,
+                year_of_mission DOUBLE,
+                mission_title VARCHAR,
+                ascend_shuttle VARCHAR,
+                in_orbit VARCHAR,
+                descend_shuttle VARCHAR,
+                hours_mission DOUBLE,
+                total_hrs_sum DOUBLE,
+                field21 DOUBLE,
+                eva_hrs_mission DOUBLE,
+                total_eva_hrs DOUBLE
+            )
+            WITH (
+                format = 'PARQUET',
+                external_location = '{table_dir}'
+            )
+        '''
+        select_query = f'''
+            SELECT * FROM {tmp_table_name}
+        '''
+        connection.execute(f"{drop_query}") #if previous cleanup failed
+        connection.execute(f"{create_query}")
+        try:
+            connection.execute(
+                f"create table {table_slice.schema}.{table_slice.table} as ({select_query})"
+            )
+        except TrinoQueryError as e:
+            if e.error_name != 'TABLE_ALREADY_EXISTS':
+                raise e
+            # table was not created, therefore already exists. Insert the data
+            connection.execute(
+                f"insert into {table_slice.schema}.{table_slice.table} ({select_query})"
+            )
+        context.add_output_metadata(
+            {
+                "run_data_files": obj
+            }
+        )
+        connection.execute(f"{drop_query}") #cleanup temp table
+
 
     def load_input(
         self, context: InputContext, table_slice: TableSlice, connection
@@ -66,7 +129,7 @@ class FilePathTypeHandler(DbTypeHandler):
     
     @property
     def supported_types(self):
-        return [TableFilePaths]
+        return [TableFilePaths, list]
     
 class ArrowTypeHandler(DbTypeHandler):
     '''
@@ -80,7 +143,8 @@ class ArrowTypeHandler(DbTypeHandler):
 
     def load_input(self, context: InputContext, table_slice: TableSlice, connection) -> pyarrow.Table:
         file_paths = FilePathTypeHandler().load_input(context, table_slice, connection)
-        fs = fsspec.filesystem(protocol='gs', project='trino-catalog', token=<token>) #temporary
+        #FIXME: gs config should be passed through resource instead
+        fs = fsspec.filesystem(protocol='gs', project='trino-catalog', token=os.environ['GCS_TOKEN']) 
         arrow_df = parquet.ParquetDataset(file_paths, filesystem=fs)
         return arrow_df.read()
     
