@@ -2,8 +2,25 @@ import pyarrow
 from pyarrow import DataType
 import dagster_trino.types as ttypes
 
+trino_string = "VARCHAR"
+trino_bool = "BOOLEAN"
+trino_tinyint = "TINYINT"
+trino_smallint = "SMALLINT"
+trino_int = "INTEGER"
+trino_bigint = "BIGINT"
+trino_float = "REAL"
+trino_double = "DOUBLE"
+trino_decimal = "DECIMAL"
+
 map_arrow_trino_types = {
     ttypes.arrow_string: ttypes.trino_string,
+    ttypes.trino_bool:ttypes.arrow_bool,
+    ttypes.trino_tinyint:ttypes.arrow_tinyint,
+    ttypes.trino_smallint:ttypes.arrow_smallint,
+    ttypes.trino_int:ttypes.arrow_int,
+    ttypes.trino_float:ttypes.arrow_float,
+    ttypes.trino_double:ttypes.arrow_double,
+    ttypes.trino_decimal:ttypes.arrow_decimal
 }
 
 def get_trino_columns_from_arrow_schema(schema:pyarrow.Schema) -> str:
