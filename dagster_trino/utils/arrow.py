@@ -25,7 +25,12 @@ map_arrow_trino_types = {
     ttypes.arrow_time:ttypes.trino_time
 }
 
-def get_trino_columns_from_arrow_schema(schema:pyarrow.Schema) -> str:
-    return ','.join([f"{n} {t}" for n,t in zip(
+def _get_trino_columns_from_arrow_schema(schema:pyarrow.Schema) -> str:
+    mapped_names =  ','.join([f"{n} {t}" for n,t in zip(
         schema.names, [map_arrow_trino_types.get(str(t), str(t)) for t in schema.types]
     )])
+    for precision_type in [ttypes.arrow_decimal]:
+        mapped_names = mapped_names.replace(f"{precision_type}(", f"{map_arrow_trino_types[precision_type]}(")
+    return mapped_names
+
+    

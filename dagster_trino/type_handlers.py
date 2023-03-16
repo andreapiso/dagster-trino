@@ -56,7 +56,7 @@ class FilePathTypeHandler(DbTypeHandler):
         #FIXME: gs config should be passed through resource instead
         fs = fsspec.filesystem(protocol='gs', project='trino-catalog', token=os.environ['GCS_TOKEN']) 
         arrow_schema = parquet.read_schema(obj[0], filesystem=fs)
-        trino_columns = arrow_utils.get_trino_columns_from_arrow_schema(arrow_schema)
+        trino_columns = arrow_utils._get_trino_columns_from_arrow_schema(arrow_schema)
         tmp_table_name = f'{table_slice.schema}.tmp_dagster_{table_slice.table}'
         drop_query = f'''
             DROP TABLE IF EXISTS {tmp_table_name}
