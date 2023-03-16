@@ -24,8 +24,13 @@ def build_trino_iomanager(
         """
         Builds an IO manager definition that reads inputs from and writes outputs to Trino.
         """
+        required_resource_keys = set()
+        if any(type_handler.requires_fsspec for type_handler in type_handlers):
+            required_resource_keys.add('fsspec')
+
         @io_manager(
-            config_schema=define_trino_config()
+            config_schema=define_trino_config(),
+            required_resource_keys=required_resource_keys
         )
         def trino_io_manager(init_context):
             return DbIOManager(

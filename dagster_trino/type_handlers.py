@@ -13,7 +13,12 @@ import fsspec
 
 import os
 
-class TrinoQueryTypeHandler(DbTypeHandler):
+class TrinoBaseTypeHandler(DbTypeHandler):
+    @property
+    def requires_fsspec(self):
+        False
+
+class TrinoQueryTypeHandler(TrinoBaseTypeHandler):
     def handle_output(
         self, context: OutputContext, table_slice: TableSlice, obj: TrinoQuery, connection
     ):
@@ -45,7 +50,7 @@ class TrinoQueryTypeHandler(DbTypeHandler):
     def supported_types(self):
         return [TrinoQuery]
     
-class FilePathTypeHandler(DbTypeHandler):
+class FilePathTypeHandler(TrinoBaseTypeHandler):
     def handle_output(
         self, context: OutputContext, table_slice: TableSlice, obj: TableFilePaths, connection
     ):
@@ -113,7 +118,11 @@ class FilePathTypeHandler(DbTypeHandler):
     def supported_types(self):
         return [TableFilePaths, list]
     
-class ArrowTypeHandler(DbTypeHandler):
+    @property
+    def requires_fsspec(self):
+        return True
+    
+class ArrowTypeHandler(TrinoBaseTypeHandler):
     '''
         Type Handler to load/handle pandas types by reading/writing parquet 
         files for Trino tables backed by Parquet working against a Hive catalog.
@@ -133,3 +142,8 @@ class ArrowTypeHandler(DbTypeHandler):
     @property
     def supported_types(self):
         return [pyarrow.Table]
+    
+    @property
+    def requires_fsspec(self):
+        return True
+    
