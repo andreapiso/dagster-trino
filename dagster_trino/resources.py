@@ -2,8 +2,7 @@ from typing import Mapping, Iterator, Optional, Any
 from contextlib import closing, contextmanager
 import sys
 
-from dagster import resource
-from dagster._core.storage.event_log.sql_event_log import SqlDbConnection
+from dagster import resource, Permissive, Field, String, ResourceDefinition
 from dagster._annotations import public
 import dagster._check as check
 
@@ -12,6 +11,7 @@ from .configs import define_trino_config
 import pandas as pd
 
 import trino
+import fsspec
 
 class TrinoConnection:
     """A connection to Trino that can execute queries. In general this class should not be
@@ -108,3 +108,21 @@ def trino_resource(context):
 def _filter_password(args):
     """Remove password from connection args for logging."""
     return {k: v for k, v in args.items() if k != "password"}
+
+def _create_fsspec_filesystem(config):
+    fsspec_params = dict(config)
+    if "protocol" not in fsspec_params:
+        #default to local filesystem if none provided
+        fsspec_params["protocol"] = "file"
+    return fsspec.filesystem(**fsspec_params) 
+
+
+def build_fsspec_resource(fsspec_params) -> ResourceDefinition:
+    @resource
+    def fsspec_resource(init_context):
+        # init_context.log.info(f"IOManager: {init_context.resource_config}")
+        return _create_fsspec_filesystem(fsspec_params)
+    
+    return fsspec_resource
+
+

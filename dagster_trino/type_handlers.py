@@ -9,7 +9,6 @@ import pandas as pd
 import pyarrow
 from pyarrow import parquet
 from .utils import arrow as arrow_utils
-import fsspec
 
 import os
 
@@ -58,8 +57,7 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         if len(obj) == 0:
             raise FileNotFoundError("The list of files to load in the table is empty.")
         table_dir = os.path.dirname(obj[0])
-        #FIXME: gs config should be passed through resource instead
-        fs = fsspec.filesystem(protocol='gs', project='trino-catalog', token=os.environ['GCS_TOKEN']) 
+        fs = context.resources.fsspec
         arrow_schema = parquet.read_schema(obj[0], filesystem=fs)
         trino_columns = arrow_utils._get_trino_columns_from_arrow_schema(arrow_schema)
         tmp_table_name = f'{table_slice.schema}.tmp_dagster_{table_slice.table}'
@@ -134,8 +132,7 @@ class ArrowTypeHandler(TrinoBaseTypeHandler):
 
     def load_input(self, context: InputContext, table_slice: TableSlice, connection) -> pyarrow.Table:
         file_paths = FilePathTypeHandler().load_input(context, table_slice, connection)
-        #FIXME: gs config should be passed through resource instead
-        fs = fsspec.filesystem(protocol='gs', project='trino-catalog', token=os.environ['GCS_TOKEN']) 
+        fs = context.resources.fsspec
         arrow_df = parquet.ParquetDataset(file_paths, filesystem=fs)
         return arrow_df.read()
     
