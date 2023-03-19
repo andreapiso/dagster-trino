@@ -2,7 +2,7 @@ from typing import Mapping, Iterator, Optional, Any
 from contextlib import closing, contextmanager
 import sys
 
-from dagster import resource, Permissive, Field, String, ResourceDefinition
+from dagster import resource, Field, StringSource, ResourceDefinition
 from dagster._annotations import public
 import dagster._check as check
 
@@ -12,6 +12,7 @@ import pandas as pd
 
 import trino
 import fsspec
+import os
 
 class TrinoConnection:
     """A connection to Trino that can execute queries. In general this class should not be
@@ -96,7 +97,6 @@ class TrinoConnection:
                     else:
                         return result
 
-
 @resource(
     config_schema=define_trino_config(),
     description="This resource is for connecting to a Trino Cluster",
@@ -109,19 +109,29 @@ def _filter_password(args):
     """Remove password from connection args for logging."""
     return {k: v for k, v in args.items() if k != "password"}
 
-def _create_fsspec_filesystem(config):
+def _create_fsspec_filesystem(config) -> fsspec.spec.AbstractFileSystem:
     fsspec_params = dict(config)
-    if "protocol" not in fsspec_params:
-        #default to local filesystem if none provided
-        fsspec_params["protocol"] = "file"
     return fsspec.filesystem(**fsspec_params) 
 
+class FsSpec:
+    def __init__(self, tmp_path, fsspec_params):
+        if "protocol" not in fsspec_params:
+            #default to local filesystem if none provided
+            fsspec_params["protocol"] = "file"
+        self.protocol = fsspec_params['protocol']
+        self.fs = _create_fsspec_filesystem(fsspec_params)
+        self.tmp_folder = os.path.join(tmp_path, '_dagster_tmp')
+        self.fs.makedirs(self.tmp_folder, exist_ok=True)
 
 def build_fsspec_resource(fsspec_params) -> ResourceDefinition:
-    @resource
-    def fsspec_resource(init_context):
+    @resource(config_schema={
+        'tmp_path': Field(StringSource, is_required=True,
+                        description="Path where to stage temporary files. \
+                            Will create a _dagster_tmp folder if it does not exist") 
+    })
+    def fsspec_resource(context):
         # init_context.log.info(f"IOManager: {init_context.resource_config}")
-        return _create_fsspec_filesystem(fsspec_params)
+        return FsSpec(context.resource_config['tmp_path'], fsspec_params)
     
     return fsspec_resource
 

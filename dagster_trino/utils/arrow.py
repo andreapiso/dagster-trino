@@ -18,6 +18,7 @@ map_arrow_trino_types = {
     ttypes.arrow_tinyint:ttypes.trino_tinyint,
     ttypes.arrow_smallint:ttypes.trino_smallint,
     ttypes.arrow_int:ttypes.trino_int,
+    ttypes.arrow_bigint:ttypes.trino_bigint,
     ttypes.arrow_float:ttypes.trino_float,
     ttypes.arrow_double:ttypes.trino_double,
     ttypes.arrow_decimal:ttypes.trino_decimal,
