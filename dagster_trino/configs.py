@@ -55,5 +55,3 @@ def define_trino_config():
         "schema": schema,
         "catalog": catalog
     }
-
-    
