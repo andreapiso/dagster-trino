@@ -123,10 +123,36 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         return True
     
 class ArrowTypeHandler(TrinoBaseTypeHandler):
-    '''
-        Type Handler to load/handle pandas types by reading/writing parquet 
-        files for Trino tables backed by Parquet working against a Hive catalog.
-    '''
+    """Stores and loads Arrow Tables in Trino accessing the underlying parquet files
+    through the object storage or file system backing a Trino Hive catalog.
+    To use this type handler, pass it to ``build_trino_io_manager``.
+
+    The `ArrowTypeHandler` needs an `fsspec` resource to be set up 
+    in order to access the storage layer. 
+
+    Example:
+        .. code-block:: python
+            from dagster_trino.io_manager import build_trino_io_manager
+            from dagster_trino.resources import build_fsspec_resource
+            from dagster_trino.type_handlers import ArrowTypeHandler
+            from dagster import Definitions
+            import pyarrow as pa
+            
+            @asset(io_manager_key='trino_io_manager')
+            def my_table() -> pa.Table
+                ...
+            fsspec_params = {...} #dict containing fsspec storage options
+            fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
+            trino_io_manager = build_trino_io_manager([ArrowTypeHandler()])
+            
+            defs = Definitions(
+                assets=[my_table],
+                resources={
+                    "trino_io_manager": trinoquery_io_manager.configured({...}),
+                    "fsspec": fsspec_resource.configured({...})
+                }
+            )
+    """
     def __init__(self):
         self.file_handler = FilePathTypeHandler()
 
@@ -172,9 +198,10 @@ class PandasArrowTypeHandler(TrinoBaseTypeHandler):
             from dagster_trino.resources import build_fsspec_resource
             from dagster_trino.type_handlers import PandasArrowTypeHandler
             from dagster import Definitions
+            import pandas as pd
             
             @asset(io_manager_key='trino_io_manager')
-            def my_table():
+            def my_table() -> pd.DataFrame
                 ...
             fsspec_params = {...} #dict containing fsspec storage options
             fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
