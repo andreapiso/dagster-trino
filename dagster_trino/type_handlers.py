@@ -143,6 +143,8 @@ class ArrowTypeHandler(TrinoBaseTypeHandler):
         fs.rm(staging_path, recursive=True)
 
     def load_input(self, context: InputContext, table_slice: TableSlice, connection) -> pyarrow.Table:
+        if table_slice.partition_dimensions and len(context.asset_partition_keys) == 0:
+            return pyarrow.Table()
         file_paths = self.file_handler.load_input(context, table_slice, connection)
         fs = context.resources.fsspec.fs
         arrow_df = parquet.ParquetDataset(file_paths, filesystem=fs)
@@ -162,6 +164,8 @@ class PandasArrowTypeHandler(TrinoBaseTypeHandler):
         self.arrow_handler = ArrowTypeHandler()
 
     def handle_output(self, context: OutputContext, table_slice: TableSlice, obj: pd.DataFrame, connection):
+        if table_slice.partition_dimensions and len(context.asset_partition_keys) == 0:
+            return pd.DataFrame()
         return self.arrow_handler.handle_output(context, table_slice, pyarrow.Table.from_pandas(obj), connection)
     
     def load_input(self, context: InputContext, table_slice: TableSlice, connection):
