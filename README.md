@@ -91,10 +91,8 @@ defs = Definitions(
 
 ```
 
-
 For examples of what can be achieved using the `IOManager`, refer to the [Examples](examples/) folder
  
-
 ## Contributing
 
 If you'd like to contribute to this integration, please fork the repository and submit a pull request. We welcome bug reports, feature requests, and other contributions.
