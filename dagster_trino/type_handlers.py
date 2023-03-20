@@ -13,11 +13,36 @@ from .utils import arrow as arrow_utils
 import os
 
 class TrinoBaseTypeHandler(DbTypeHandler):
+    """
+    Base Type Handler Class. Should not be called directly, but 
+    rather used through one of its sub-classes.
+    """
     @property
     def requires_fsspec(self):
         False
 
 class TrinoQueryTypeHandler(TrinoBaseTypeHandler):
+    """Execute or returns Trino Queries to create and 
+    modify Dagster Trino assets.
+
+    Example:
+        .. code-block:: python
+            from dagster_trino.io_manager import build_trino_io_manager
+            from dagster_trino.type_handlers import TrinoQueryTypeHandler
+            from dagster import Definitions
+            
+            @asset(io_manager_key='trino_io_manager')
+            def my_table() 
+                return 'SELECT * FROM my_trino_table' LIMIT 10
+            trino_io_manager = build_trino_io_manager([TrinoQueryTypeHandler()])
+            
+            defs = Definitions(
+                assets=[my_table],
+                resources={
+                    "trino_io_manager": trinoquery_io_manager.configured({...}),
+                }
+            )
+    """
     def handle_output(
         self, context: OutputContext, table_slice: TableSlice, obj: TrinoQuery, connection
     ):
@@ -50,6 +75,36 @@ class TrinoQueryTypeHandler(TrinoBaseTypeHandler):
         return [TrinoQuery]
     
 class FilePathTypeHandler(TrinoBaseTypeHandler):
+    """Stores and loads Parquet Data in Trino 
+    through the object storage or file system backing a Trino Hive catalog.
+    To use this type handler, pass it to ``build_trino_io_manager``.
+
+    The `FilePathTypeHandler requires  an `fsspec` resource to be set up 
+    in order to access the storage layer. 
+
+    Example:
+        .. code-block:: python
+            from dagster_trino.io_manager import build_trino_io_manager
+            from dagster_trino.resources import build_fsspec_resource
+            from dagster_trino.type_handlers import FilePathTypeHandler
+            from dagster_trino.types import TableFilePaths
+            from dagster import Definitions
+            
+            @asset(io_manager_key='trino_io_manager')
+            def my_table() -> TableFilePaths
+                ...
+            fsspec_params = {...} #dict containing fsspec storage options
+            fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
+            trino_io_manager = build_trino_io_manager([FilePathTypehandler()])
+            
+            defs = Definitions(
+                assets=[my_table],
+                resources={
+                    "trino_io_manager": trinoquery_io_manager.configured({...}),
+                    "fsspec": fsspec_resource.configured({...})
+                }
+            )
+    """
     def handle_output(
         self, context: OutputContext, table_slice: TableSlice, obj: TableFilePaths, connection
     ):
@@ -123,10 +178,36 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         return True
     
 class ArrowTypeHandler(TrinoBaseTypeHandler):
-    '''
-        Type Handler to load/handle pandas types by reading/writing parquet 
-        files for Trino tables backed by Parquet working against a Hive catalog.
-    '''
+    """Stores and loads Arrow Tables in Trino accessing the underlying parquet files
+    through the object storage or file system backing a Trino Hive catalog.
+    To use this type handler, pass it to ``build_trino_io_manager``.
+
+    The `ArrowTypeHandler` requires an `fsspec` resource to be set up 
+    in order to access the storage layer. 
+
+    Example:
+        .. code-block:: python
+            from dagster_trino.io_manager import build_trino_io_manager
+            from dagster_trino.resources import build_fsspec_resource
+            from dagster_trino.type_handlers import ArrowTypeHandler
+            from dagster import Definitions
+            import pyarrow as pa
+            
+            @asset(io_manager_key='trino_io_manager')
+            def my_table() -> pa.Table
+                ...
+            fsspec_params = {...} #dict containing fsspec storage options
+            fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
+            trino_io_manager = build_trino_io_manager([ArrowTypeHandler()])
+            
+            defs = Definitions(
+                assets=[my_table],
+                resources={
+                    "trino_io_manager": trinoquery_io_manager.configured({...}),
+                    "fsspec": fsspec_resource.configured({...})
+                }
+            )
+    """
     def __init__(self):
         self.file_handler = FilePathTypeHandler()
 
@@ -159,7 +240,36 @@ class ArrowTypeHandler(TrinoBaseTypeHandler):
         return True
     
 class PandasArrowTypeHandler(TrinoBaseTypeHandler):
-    
+    """Stores and loads Pandas DataFrames in Trino accessing the underlying parquet files
+    through the object storage or file system backing a Trino Hive catalog.
+    To use this type handler, pass it to ``build_trino_io_manager``.
+
+    The `PandasArrowTypeHandler` requires an `fsspec` resource to be set up 
+    in order to access the storage layer. 
+
+    Example:
+        .. code-block:: python
+            from dagster_trino.io_manager import build_trino_io_manager
+            from dagster_trino.resources import build_fsspec_resource
+            from dagster_trino.type_handlers import PandasArrowTypeHandler
+            from dagster import Definitions
+            import pandas as pd
+            
+            @asset(io_manager_key='trino_io_manager')
+            def my_table() -> pd.DataFrame
+                ...
+            fsspec_params = {...} #dict containing fsspec storage options
+            fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
+            trino_io_manager = build_trino_io_manager([PandasArrowTypeHandler()])
+            
+            defs = Definitions(
+                assets=[my_table],
+                resources={
+                    "trino_io_manager": trinoquery_io_manager.configured({...}),
+                    "fsspec": fsspec_resource.configured({...})
+                }
+            )
+    """
     def __init__(self):
         self.arrow_handler = ArrowTypeHandler()
 
