@@ -35,6 +35,30 @@ class TrinoConnection:
         auth = trino.auth.BasicAuthentication(config['user'], config['password'])
 
         if self.connector == 'sqlalchemy':
+
+            from sqlalchemy.engine import Connection
+            from sqlalchemy import insert
+
+            @public
+            def pandas_trino_fix(pd_table, conn: Connection, keys: list, data_iter: Iterator):
+                """
+                Custom function to hack around issue with Pandas adding trailing semi-colon.
+                If the statement that Pandas generates contains a trailing semicolon, remove
+                it before actually executing the query.
+                """
+                data = [dict(zip(keys, row)) for row in data_iter]
+                executable = insert(pd_table.table).values(data) # sqlalchemy.sql.dml.Insert
+                statement = str(executable.compile(dialect=conn.dialect, compile_kwargs={"literal_binds": True}))
+                
+                # remove the trailing semicolon if required.
+                if statement.strip().endswith(';'):
+                    statement = statement.rstrip(';', 1)
+
+                # conn.execute can take a string or a `sqlalchemy.sql.expression.Executable`
+                result = conn.execute(statement)
+                return result.rowcount
+            
+
             self.conn_args = {
                 k: config.get(k)
                 for k in (
@@ -91,7 +115,6 @@ class TrinoConnection:
         sql: str,
         parameters: Optional[Mapping[Any, Any]] = None,
         fetch_results: bool = False,
-        return_pandas: bool = False
     ):
         """Execute a query in Trino.
         Args:
@@ -99,7 +122,7 @@ class TrinoConnection:
             parameters (Optional[Mapping[Any, Any]]): Parameters to be passed to the query. 
             fetch_results (bool): If True, will return the result of the query. Defaults to False
         Returns:
-            The result of the query if fetch_results or use_pandas_result is True, otherwise returns None
+            The result of the query if fetch_results is True, otherwise returns None
         Examples:
             .. code-block:: python
                 @op(required_resource_keys={"trino"})
@@ -121,10 +144,7 @@ class TrinoConnection:
                 cursor.execute(sql, parameters)
                 if fetch_results:
                     result = cursor.fetchall()
-                    if return_pandas:
-                        return pd.DataFrame(result, columns=[i[0] for i in cursor.description])
-                    else:
-                        return result
+                    return result
 
 @resource(
     config_schema=define_trino_config(),
@@ -173,5 +193,6 @@ def build_fsspec_resource(fsspec_params) -> ResourceDefinition:
         return FsSpec(context.resource_config['tmp_path'], fsspec_params)
     
     return fsspec_resource
+
 
 
