@@ -23,6 +23,7 @@ class TrinoConnection:
 
         self.connector = config.get("connector", None)
         self.sqlalchemy_engine_args = {}
+        self.pandas_trino_fix = None
 
         auths_set = 0
         auths_set += 1 if config.get("password", None) is not None else 0
@@ -39,8 +40,7 @@ class TrinoConnection:
             from sqlalchemy.engine import Connection
             from sqlalchemy import insert
 
-            @public
-            def pandas_trino_fix(pd_table, conn: Connection, keys: list, data_iter: Iterator):
+            def _pandas_trino_fix(pd_table, conn: Connection, keys: list, data_iter: Iterator):
                 """
                 Custom function to hack around issue with Pandas adding trailing semi-colon.
                 If the statement that Pandas generates contains a trailing semicolon, remove
@@ -57,6 +57,7 @@ class TrinoConnection:
                 # conn.execute can take a string or a `sqlalchemy.sql.expression.Executable`
                 result = conn.execute(statement)
                 return result.rowcount
+            self.pandas_trino_fix = _pandas_trino_fix
             
 
             self.conn_args = {
@@ -113,7 +114,7 @@ class TrinoConnection:
     def execute_query(
         self,
         sql: str,
-        parameters: Optional[Mapping[Any, Any]] = None,
+        parameters: Optional[Mapping[Any, Any]] = {},
         fetch_results: bool = False,
     ):
         """Execute a query in Trino.
@@ -135,16 +136,17 @@ class TrinoConnection:
         check.opt_inst_param(parameters, "parameters", (dict))
         check.bool_param(fetch_results, "fetch_results")
 
-        with self.get_connection() as conn:
-            with closing(conn.cursor()) as cursor:
-                if sys.version_info[0] < 3:
-                    sql = sql.encode("utf-8")
-                self.log.info("Executing query: " + sql)
-                parameters = dict(parameters) if isinstance(parameters, Mapping) else parameters
-                cursor.execute(sql, parameters)
-                if fetch_results:
-                    result = cursor.fetchall()
-                    return result
+        query_exec = self.get_connection() if self.connector == 'sqlalchemy' else closing(self.get_connection().cursor())
+
+        with query_exec as cursor:
+            if sys.version_info[0] < 3:
+                sql = sql.encode("utf-8")
+            self.log.info("Executing query: " + sql)
+            parameters = dict(parameters) if isinstance(parameters, Mapping) else parameters
+            cursor.execute(sql, parameters)
+            if fetch_results:
+                result = cursor.fetchall()
+                return result
 
 @resource(
     config_schema=define_trino_config(),
