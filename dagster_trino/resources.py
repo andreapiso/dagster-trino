@@ -21,6 +21,10 @@ class TrinoConnection:
     def __init__(self, config: Mapping[str, str], log):  # pylint: disable=too-many-locals
         # Extract parameters from resource config.
 
+        self.connector = config.get("connector", None)
+        self.sqlalchemy_engine_args = {}
+        self.pandas_trino_fix = None
+
         auths_set = 0
         auths_set += 1 if config.get("password", None) is not None else 0
 
@@ -31,20 +35,59 @@ class TrinoConnection:
 
         auth = trino.auth.BasicAuthentication(config['user'], config['password'])
 
-        self.conn_args = {
-            k: config.get(k)
-            for k in (
-                "host",
-                "user",
-                "auth",
-                "port",
-                "http_scheme",
-                "catalog",
-                "schema"
-            )
-            if config.get(k) is not None
-        }
-        self.conn_args['auth'] = auth
+        if self.connector == 'sqlalchemy':
+
+            from sqlalchemy.engine import Connection
+            from sqlalchemy import insert
+
+            def _pandas_trino_fix(pd_table, conn: Connection, keys: list, data_iter: Iterator):
+                """
+                Custom function to hack around issue with Pandas adding trailing semi-colon.
+                If the statement that Pandas generates contains a trailing semicolon, remove
+                it before actually executing the query.
+                """
+                data = [dict(zip(keys, row)) for row in data_iter]
+                executable = insert(pd_table.table).values(data) # sqlalchemy.sql.dml.Insert
+                statement = str(executable.compile(dialect=conn.dialect, compile_kwargs={"literal_binds": True}))
+                
+                # remove the trailing semicolon if required.
+                if statement.strip().endswith(';'):
+                    statement = statement.rstrip(';', 1)
+
+                # conn.execute can take a string or a `sqlalchemy.sql.expression.Executable`
+                result = conn.execute(statement)
+                return result.rowcount
+            self.pandas_trino_fix = _pandas_trino_fix
+            
+
+            self.conn_args = {
+                k: config.get(k)
+                for k in (
+                    "host",
+                    "user",
+                    "port",
+                    "catalog",
+                    "schema"
+                )
+                if config.get(k) is not None
+            }
+            self.sqlalchemy_engine_args['http_scheme'] = config.get('http_scheme', None)
+            self.sqlalchemy_engine_args['auth'] = auth
+        else:
+            self.conn_args = {
+                k: config.get(k)
+                for k in (
+                    "host",
+                    "user",
+                    "auth",
+                    "port",
+                    "http_scheme",
+                    "catalog",
+                    "schema"
+                )
+                if config.get(k) is not None
+            }
+            self.conn_args['auth'] = auth
 
         self.log = log
 
@@ -52,17 +95,27 @@ class TrinoConnection:
     @contextmanager
     def get_connection(self) -> Iterator[trino.dbapi.Connection]:
         """Gets a connection to Trino as a context manager."""
-        conn = trino.dbapi.connect(**self.conn_args)
-        yield conn
-        conn.close()
+        if self.connector == "sqlalchemy":
+            from trino.sqlalchemy import URL
+            from sqlalchemy import create_engine
+
+            engine = create_engine(URL(**self.conn_args), connect_args=self.sqlalchemy_engine_args)
+            conn = engine.connect()
+
+            yield conn
+            conn.close()
+            engine.dispose()
+        else:
+            conn = trino.dbapi.connect(**self.conn_args)
+            yield conn
+            conn.close()
 
     @public
     def execute_query(
         self,
         sql: str,
-        parameters: Optional[Mapping[Any, Any]] = None,
+        parameters: Optional[Mapping[Any, Any]] = {},
         fetch_results: bool = False,
-        return_pandas: bool = False
     ):
         """Execute a query in Trino.
         Args:
@@ -70,7 +123,7 @@ class TrinoConnection:
             parameters (Optional[Mapping[Any, Any]]): Parameters to be passed to the query. 
             fetch_results (bool): If True, will return the result of the query. Defaults to False
         Returns:
-            The result of the query if fetch_results or use_pandas_result is True, otherwise returns None
+            The result of the query if fetch_results is True, otherwise returns None
         Examples:
             .. code-block:: python
                 @op(required_resource_keys={"trino"})
@@ -83,19 +136,17 @@ class TrinoConnection:
         check.opt_inst_param(parameters, "parameters", (dict))
         check.bool_param(fetch_results, "fetch_results")
 
-        with self.get_connection() as conn:
-            with closing(conn.cursor()) as cursor:
-                if sys.version_info[0] < 3:
-                    sql = sql.encode("utf-8")
-                self.log.info("Executing query: " + sql)
-                parameters = dict(parameters) if isinstance(parameters, Mapping) else parameters
-                cursor.execute(sql, parameters)
-                if fetch_results:
-                    result = cursor.fetchall()
-                    if return_pandas:
-                        return pd.DataFrame(result, columns=[i[0] for i in cursor.description])
-                    else:
-                        return result
+        query_exec = self.get_connection() if self.connector == 'sqlalchemy' else closing(self.get_connection().cursor())
+
+        with query_exec as cursor:
+            if sys.version_info[0] < 3:
+                sql = sql.encode("utf-8")
+            self.log.info("Executing query: " + sql)
+            parameters = dict(parameters) if isinstance(parameters, Mapping) else parameters
+            cursor.execute(sql, parameters)
+            if fetch_results:
+                result = cursor.fetchall()
+                return result
 
 @resource(
     config_schema=define_trino_config(),
@@ -104,10 +155,6 @@ class TrinoConnection:
 def trino_resource(context):
     """#FIXME DOCS"""
     return TrinoConnection(context.resource_config, context.log)
-
-def _filter_password(args):
-    """Remove password from connection args for logging."""
-    return {k: v for k, v in args.items() if k != "password"}
 
 def _create_fsspec_filesystem(config) -> fsspec.spec.AbstractFileSystem:
     fsspec_params = dict(config)
@@ -148,5 +195,6 @@ def build_fsspec_resource(fsspec_params) -> ResourceDefinition:
         return FsSpec(context.resource_config['tmp_path'], fsspec_params)
     
     return fsspec_resource
+
 
 
