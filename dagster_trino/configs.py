@@ -46,6 +46,12 @@ def define_trino_config():
         is_required=False
     )
 
+    connector = Field(
+        StringSource,
+        description='Whether to Use SQLAlchemy or a raw Trino connection',
+        is_required=False
+    )
+
     return {
         "host": host,
         "user": user,
@@ -53,5 +59,6 @@ def define_trino_config():
         "port": port,
         "http_scheme": http_scheme,
         "schema": schema,
-        "catalog": catalog
+        "catalog": catalog,
+        "connector": connector
     }
