@@ -1,5 +1,5 @@
 from dagster._core.storage.db_io_manager import DbTypeHandler, TableSlice
-from dagster import InputContext, MetadataValue, OutputContext, TableColumn, TableSchema
+from dagster import InputContext, OutputContext
 from .io_manager import TrinoDbClient
 from .types import TableFilePaths, TrinoQuery
 

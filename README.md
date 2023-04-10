@@ -4,10 +4,11 @@ This repository contains an integration between Dagster and Trino that enables u
 
 ## Installation
 
-To install the integration, run:
+To install the integration, clone the repository and run the following from the `dagster_trino` folder:
 
 ```shell
-pip install dagster-trino
+pip install -e .
+# Have not published the library on pypi as dagster-trino yet, in case the dagster folks want to keep that name. 
 ```
 
 ## Configuration
