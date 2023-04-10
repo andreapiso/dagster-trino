@@ -58,6 +58,6 @@ def query_trino_to_pandas(context):
 @graph_asset
 def iris():
     '''
-    Basic Asset obtained from starburst galaxy sample cluster.
+    Example of a graph-backed asset built using raw Trino queries.
     '''
     return query_trino_to_pandas(create_table_from_pandas(drop_table()))
