@@ -31,39 +31,10 @@ class CustomPolarsTypeHandler(TrinoBaseTypeHandler):
     def requires_fsspec(self):
         return True
 
-#An existing Trino Table, built from 1_io_manager/1_arrow_pandas_io.py
+#An existing Trino Table, built from 1_io_manager/arrow_pandas_io.py
 trino_iris = SourceAsset(key="trino_iris", io_manager_key='trino_io_manager')
-
-fsspec_params = {
-    "protocol": "gs",
-    "token": os.environ['GCS_TOKEN'], #These environment variables are managed by Dagster
-    "project": os.environ['GCS_PROJECT']
-}
-fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
-trinoquery_io_manager = dagster_trino.io_manager.build_trino_iomanager([CustomPolarsTypeHandler()])
 
 @asset
 def trino_iris_as_polars(context, trino_iris: pl.DataFrame):
     context.log.info(f"TRINO IRIS: {trino_iris}")
     return trino_iris
-
-defs = Definitions(
-    assets=[trino_iris, trino_iris_as_polars],
-    resources={
-        "trino_io_manager": trinoquery_io_manager.configured(
-            {
-                "user": {"env": "TRINO_USER"}, 
-                "password": {"env": "TRINO_PWD"},
-                "host": {"env": "TRINO_HOST"},
-                "port": {"env": "TRINO_PORT"},
-                "http_scheme": {"env": "TRINO_PROTOCOL"},
-                "catalog": {"env": "TRINO_CATALOG"},
-                "schema": {"env": "TRINO_SCHEMA"}
-            }
-        ),"fsspec": fsspec_resource.configured(
-            {
-                "tmp_path": {"env": "GCS_STAGING_PATH"} #e.g. gs://my_path
-            }
-        )
-    },
-)

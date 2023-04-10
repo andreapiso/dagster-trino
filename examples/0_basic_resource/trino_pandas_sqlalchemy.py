@@ -1,7 +1,7 @@
 import dagster_trino
 import pandas as pd
 
-from dagster import op, graph_asset, Definitions, In, Nothing
+from dagster import op, graph_asset, In, Nothing
 
 table_name = 'iris'
 
@@ -61,21 +61,3 @@ def iris():
     Basic Asset obtained from starburst galaxy sample cluster.
     '''
     return query_trino_to_pandas(create_table_from_pandas(drop_table()))
-
-defs = Definitions(
-    assets=[iris],
-    resources={
-        "trino": dagster_trino.resources.trino_resource.configured(
-            {
-                "user": {"env": "TRINO_USER"}, 
-                "password": {"env": "TRINO_PWD"},
-                "host": {"env": "TRINO_HOST"},
-                "port": {"env": "TRINO_PORT"},
-                "http_scheme": {"env": "TRINO_PROTOCOL"},
-                "connector": "sqlalchemy",
-                "catalog": {"env": "TRINO_CATALOG"},
-                "schema": {"env": "TRINO_SCHEMA"}
-            }
-        )
-    },
-)

@@ -1,11 +1,11 @@
 from dagster import Definitions, load_assets_from_modules
 import dagster_trino
 from dagster_trino.type_handlers import FilePathTypeHandler, ArrowTypeHandler, PandasArrowTypeHandler, TrinoQueryTypeHandler
-
 from . import query_io_manager, arrow_pandas_io
-
 import os
 
+# Prepare a dictionary to be passed as `storage_options` for fsspec. 
+# The example below sets up Google Cloud Storage, but S3, HDFS etc. will work similarly.
 fsspec_params = {
     "protocol": "gs",
     "token": os.environ['GCS_TOKEN'], #These environment variables are managed by Dagster
@@ -15,7 +15,7 @@ fsspec_params = {
 # catalog underlying stored parquet files.
 fsspec_resource = dagster_trino.resources.build_fsspec_resource(fsspec_params)
 trinoquery_io_manager = dagster_trino.io_manager.build_trino_iomanager(
-    [TrinoQueryTypeHandler(),
+    [TrinoQueryTypeHandler(), #This TypeHandler pushes down compute and storage of assets to Trino.
      FilePathTypeHandler(), #This TypeHandler creates a Trino Hive Table from parquet Files, or return the paths of files backing a table.
      ArrowTypeHandler(), #This Typehandler returns/loads a Trino Hive Table as an Arrow Table
      PandasArrowTypeHandler()] #This Typehandler returns/loads a Trino Hive Table as a Pandas Dataframe
