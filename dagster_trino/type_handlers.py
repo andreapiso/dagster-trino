@@ -137,7 +137,11 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         connection.execute(f"{create_query}")
         try:
             connection.execute(
-                f"create table {table_slice.schema}.{table_slice.table} as ({select_query})"
+                f'''
+                CREATE TABLE {table_slice.schema}.{table_slice.table}
+                WITH (format = 'PARQUET') 
+                AS ({select_query})
+                '''
             )
         except TrinoQueryError as e:
             if e.error_name != 'TABLE_ALREADY_EXISTS':

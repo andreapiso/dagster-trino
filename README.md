@@ -25,6 +25,7 @@ defs = Definitions(
                 "host": trino_host,
                 "port": trino_port,
                 "http_scheme": "https",
+                "connector": "sqlalchemy"
             }
         )
     },
