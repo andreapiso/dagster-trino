@@ -19,7 +19,7 @@ load_from:
   #- python_module: 2_custom_dataframe_integrations
   ```
 
-## Details
+## Examples
 
 The modules listed in this folder showcase different ways you can leverage `dagster-trino`:
 
@@ -47,3 +47,34 @@ On the other hand, reading a Trino table into a Pandas DataFrame using a `sqlalc
 with context.resources.trino.get_connection() as sqlalchemy_conn:
     pd.read_sql(sql=my_query, con=sqlalchemy_conn)
 ```
+
+### Working with the Trino IOManager
+
+While the Trino Resource still requires the user to explicitly interact with a Trino or SQLAlchemy connection, The IOManager is responsible for reading and writing data to and from Trino. It acts as a bridge between Trino and the user Dagster pipeline, and is responsible for ensuring that the data is properly formatted and compatible with the pipeline.
+
+The dagster-trino IOManager has several `type_handlers` that allow the IOManager to interact with data in different formats. For example:
+
+* `TrinoQueryTypeHandler` creates a Trino Table as a Dagster asset from a user query, or returns a query a user can execute to load an asset.
+* `FilePathTypeHandler` creates a Trino Table as a Dagster asset from parquet files stored on fsspec-compatible storage (e.g. S3, GCS, HDFS), or returns the paths of parquet files backing a Trino Table on a Hive catalog.
+* `ArrowTypeHandler` creates/returns Trino Table assets from/into Pyarrow Tables.
+
+To use the IOManager, the user just needs to specify the format of the data that they want to read or write, simply by using type hints. The IOManager will then handle the conversion to and from the format specified.
+
+### Asset I/O as Trino Queries
+
+The [Query IO Manager](1_io_manager/query_io_manager.py) example shows how to create and load Trino Table assets as Trino Queries. 
+
+The IOManager can load pre-existing Trino Tables as Dagster assets using Dagster `SourceAsset` class. These tables can then be referenced in queries used by Software Defined Assets. 
+
+```python
+'''
+Refer to existing Trino tables even though they were created 
+outside of dagster pipelines
+'''
+my_table = SourceAsset(key="my_table", io_manager_key='trino_io_manager')
+
+@asset(io_manager_key="trino_io_manager")
+def my_table_distinct(my_table: TrinoQuery) -> TrinoQuery:
+    return f'''SELECT DISTINCT * FROM {my_table}'''
+```
+
