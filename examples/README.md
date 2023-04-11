@@ -90,7 +90,7 @@ In particular, when writing a large dataframe into Trino using pandas `to_sql`, 
 *IOManager using `ArrowPandasTypeHandler` completes write succesfully, Trino Client gives up after 400 seconds*
 
 ![Read Benchmark](_static/benchmark_read.png "Read Benchmark")
-*IOManager using `ArrowPandasTypeHandler` reads succesfully in 28s, while the Trino Client using `pandas.read_sql` takes 218s.
+*IOManager using `ArrowPandasTypeHandler` reads succesfully in 28s, while the Trino Client using `pandas.read_sql` takes 218s.*
 
 **Note:** right now, Hive is the only Trino Object Storage catalog where the IOManager supports direct storage access. Delta/Iceberg support is WIP, as the capability to write Delta/Iceberg data from Pyhton is still a work in progress from those respective projects. In terms of file format, Parquet-backed tables are supported, with ORC support WIP.
 
