@@ -1,6 +1,6 @@
 # dagster-trino Usage Examples
 
-## Instructions
+# Instructions
 
 The examples contained in this folder showcase several usage patterns for dagster-trino. 
 
@@ -19,11 +19,11 @@ load_from:
   #- python_module: 2_custom_dataframe_integrations
   ```
 
-## Examples
+# Examples
 
 The modules listed in this folder showcase different ways you can leverage `dagster-trino`:
 
-### Using a Trino Resource
+## Using a Trino Resource
 
 The [Basic Resource](0_basic_resource/) module shows the simplest way `dagster-trino` can be used, that is, leveraging a raw `trino` resource. Using the resource, Dagster manages the Trino connection and configuration, but the user needs to explicitly get hold of the connection and execute queries against the Trino engine, for example:
 
@@ -48,7 +48,7 @@ with context.resources.trino.get_connection() as sqlalchemy_conn:
     pd.read_sql(sql=my_query, con=sqlalchemy_conn)
 ```
 
-### Working with the Trino IOManager
+## Working with the Trino IOManager
 
 While the Trino Resource still requires the user to explicitly interact with a Trino or SQLAlchemy connection, The IOManager is responsible for reading and writing data to and from Trino. It acts as a bridge between Trino and the user Dagster pipeline, and is responsible for ensuring that the data is properly formatted and compatible with the pipeline.
 
@@ -60,7 +60,7 @@ The dagster-trino IOManager has several `type_handlers` that allow the IOManager
 
 To use the IOManager, the user just needs to specify the format of the data that they want to read or write, simply by using type hints. The IOManager will then handle the conversion to and from the format specified.
 
-### Asset I/O as Trino Queries
+## Asset I/O as Trino Queries
 
 The [query_io_manager](1_io_manager/query_io_manager.py) example shows how to create and load Trino Table assets as Trino Queries. 
 
@@ -78,7 +78,7 @@ def my_table_distinct(my_table: TrinoQuery) -> TrinoQuery:
     return f'''SELECT DISTINCT * FROM {my_table}'''
 ```
 
-### Loading Trino data directly from underlying storage
+## Loading Trino data directly from underlying storage
 
 When dealing with large datasets, moving large amounts of data through the Trino client can be highly inefficient, as the data is serialized and transfered as JSON. This is especially the case when trying to load Trino data into a distributed system (e.g. Spark/Ray) as one Trino client connection will only send data to one node. 
 
@@ -145,7 +145,7 @@ def trino_iris() -> pd.DataFrame:
 ```
 Note that it is not necessary to specify a schema for the Trino table, as it will be automatically inferred from the arrow schema resulting from saving the dataframe as parquet.
 
-### Custom Type Handlers
+## Custom Type Handlers
 
 It is straightfoward to extend the type handlers provided, to handle other dataframe formats, providing two methods and two properties:
 
