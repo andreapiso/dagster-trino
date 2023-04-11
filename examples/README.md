@@ -141,10 +141,10 @@ Note that it is not necessary to specify a schema for the Trino table, as it wil
 
 It is straightfoward to extend the type handlers provided, to handle other dataframe formats, providing two methods and two properties:
 
-*
-*
-*
-*
+* `load_input`: A function describing how to load a Trino table into the desired format. 
+* `handle_output`: A function describing how to create/populate a Trino table with data in the provided format. 
+* `supported_types`: A list of types supported by the type handler. The type handler will be used automatically when using those types as hints in the asset definition.
+* `requires_fsspec`: Whether the type handler requires direct access to the underlying Trino storage.
 
 For example, the following code creates a type handler for [Polars](https://www.pola.rs/):
 
