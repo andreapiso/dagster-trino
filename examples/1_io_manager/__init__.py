@@ -1,7 +1,7 @@
 from dagster import Definitions, load_assets_from_modules
 import dagster_trino
 from dagster_trino.type_handlers import FilePathTypeHandler, ArrowTypeHandler, PandasArrowTypeHandler, TrinoQueryTypeHandler
-from . import query_io_manager, arrow_pandas_io
+from . import query_io_manager, arrow_pandas_io, write_benchmark, read_benchmark
 import os
 
 # Prepare a dictionary to be passed as `storage_options` for fsspec. 
@@ -22,7 +22,8 @@ trinoquery_io_manager = dagster_trino.io_manager.build_trino_iomanager(
 )
 
 defs = Definitions(
-    assets=load_assets_from_modules([query_io_manager, arrow_pandas_io], group_name="io_manager"),
+    assets=load_assets_from_modules([query_io_manager, arrow_pandas_io], group_name="io_manager") +
+           load_assets_from_modules([write_benchmark, read_benchmark], group_name='benchmark'),
     resources={
         "trino_io_manager": trinoquery_io_manager.configured(
             {
@@ -37,6 +38,17 @@ defs = Definitions(
         ),"fsspec": fsspec_resource.configured(
             {
                 "tmp_path": {"env": "GCS_STAGING_PATH"} #e.g. gs://my_path
+            }
+        ), "trino": dagster_trino.resources.trino_resource.configured(
+            {
+                "user": {"env": "TRINO_USER"}, 
+                "password": {"env": "TRINO_PWD"},
+                "host": {"env": "TRINO_HOST"},
+                "port": {"env": "TRINO_PORT"},
+                "http_scheme": {"env": "TRINO_PROTOCOL"},
+                "connector": "sqlalchemy",
+                "catalog": {"env": "TRINO_CATALOG"},
+                "schema": {"env": "TRINO_SCHEMA"}
             }
         )
     },

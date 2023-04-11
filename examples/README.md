@@ -84,6 +84,14 @@ When dealing with large datasets, moving large amounts of data through the Trino
 
 In these situations, it can be several orders of magnitude faster to directly access the data from the underlying storage. The IOManager abstracts this process, letting the user focus on their business logic rather than cumbersome I/O operations. 
 
+In particular, when writing a large dataframe into Trino using pandas `to_sql`, the Trino Client might reject the query as "too large", making accessing the underlying storage a better choice for Trino I/O. Example showing comparisons between the two methods are available in the [IOManager](1_io_manager/) folder.
+
+![Write Benchmark](_static/benchmark_write.png "Write Benchmark")
+*IOManager using `ArrowPandasTypeHandler` completes write succesfully, Trino Client gives up after 400 seconds*
+
+![Read Benchmark](_static/benchmark_read.png "Read Benchmark")
+*IOManager using `ArrowPandasTypeHandler` reads succesfully in 28s, while the Trino Client using `pandas.read_sql` takes 218s.
+
 **Note:** right now, Hive is the only Trino Object Storage catalog where the IOManager supports direct storage access. Delta/Iceberg support is WIP, as the capability to write Delta/Iceberg data from Pyhton is still a work in progress from those respective projects. In terms of file format, Parquet-backed tables are supported, with ORC support WIP.
 
 The [arrow_pandas_io](1_io_manager/arrow_pandas_io.py) shows how to create and load Trino Table assets by leveraging the underlying storage. First, in order to obtain a consistent interface while accessing different types of storage, [fsspec](https://filesystem-spec.readthedocs.io/en/latest/) is used. dagster-trino provides a fsspec resource that can be instantiated with a dictionary representing the parameters to pass to [fsspec.filesystem](https://filesystem-spec.readthedocs.io/en/latest/api.html#fsspec.filesystem) such as the storage protocol to use, or the authentication method to access said storage.
