@@ -170,9 +170,18 @@ class FsSpec:
             #default to local filesystem if none provided
             fsspec_params["protocol"] = "file"
         self.protocol = fsspec_params['protocol']
-        self.fs = _create_fsspec_filesystem(fsspec_params)
         self.tmp_folder = os.path.join(tmp_path, '_dagster_tmp')
-        self.fs.makedirs(self.tmp_folder, exist_ok=True)
+        self.params = fsspec_params
+
+    @public
+    @contextmanager
+    def get_fs(self):
+        fs = _create_fsspec_filesystem(self.params)
+        fs.makedirs(self.tmp_folder, exist_ok=True)
+        yield fs
+        del(fs)
+
+        
 
 def build_fsspec_resource(fsspec_params) -> ResourceDefinition:
     """
