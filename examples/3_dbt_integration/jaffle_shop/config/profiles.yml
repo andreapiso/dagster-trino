@@ -1,0 +1,13 @@
+jaffle_shop:
+  target: dev
+  outputs:
+    dev:
+      type: trino
+      method: ldap 
+      user: "{{ env_var('TRINO_USER') }}"
+      password: "{{ env_var('TRINO_PWD') }}"
+      host: "{{ env_var('TRINO_HOST') }}"
+      database: "{{ env_var('TRINO_CATALOG') }}"
+      schema: "{{ env_var('DBT_TRINO_SCHEMA') }}"
+      port: "{{ env_var('TRINO_PORT') | as_number }}"
+      threads: 1

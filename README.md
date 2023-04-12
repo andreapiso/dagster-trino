@@ -1,13 +1,18 @@
 # dagster-trino 
 
+**Transform all of your data assets into [Software Defined Assets](https://docs.dagster.io/concepts/assets/software-defined-assets)**
+
+![dagster-trino](examples/_static/many_assets.png "dagster-trino")
+
 This repository contains an integration between Dagster and Trino that enables users to run Trino queries as part of their Dagster pipelines.
 
 ## Installation
 
-To install the integration, run:
+To install the integration, clone the repository and run the following from the `dagster_trino` folder:
 
 ```shell
-pip install dagster-trino
+pip install -e .
+# Have not published the library on pypi as dagster-trino yet, in case the dagster folks want to keep that name. 
 ```
 
 ## Configuration
@@ -25,6 +30,7 @@ defs = Definitions(
                 "host": trino_host,
                 "port": trino_port,
                 "http_scheme": "https",
+                "connector": "sqlalchemy"
             }
         )
     },
@@ -91,10 +97,8 @@ defs = Definitions(
 
 ```
 
-
 For examples of what can be achieved using the `IOManager`, refer to the [Examples](examples/) folder
  
-
 ## Contributing
 
 If you'd like to contribute to this integration, please fork the repository and submit a pull request. We welcome bug reports, feature requests, and other contributions.

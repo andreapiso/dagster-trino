@@ -1,5 +1,5 @@
 from dagster._core.storage.db_io_manager import DbTypeHandler, TableSlice
-from dagster import InputContext, MetadataValue, OutputContext, TableColumn, TableSchema
+from dagster import InputContext, OutputContext
 from .io_manager import TrinoDbClient
 from .types import TableFilePaths, TrinoQuery
 
@@ -112,9 +112,10 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         if len(obj) == 0:
             raise FileNotFoundError("The list of files to load in the table is empty.")
         table_dir = os.path.dirname(obj[0])
-        fs = context.resources.fsspec.fs
-        arrow_schema = parquet.read_schema(obj[0], filesystem=fs)
-        trino_columns = arrow_utils._get_trino_columns_from_arrow_schema(arrow_schema)
+        # fs = context.resources.fsspec.fs
+        with context.resources.fsspec.get_fs() as fs:
+            arrow_schema = parquet.read_schema(obj[0], filesystem=fs)
+            trino_columns = arrow_utils._get_trino_columns_from_arrow_schema(arrow_schema)
         context.log.info(arrow_schema)
         context.log.info(trino_columns)
         tmp_table_name = f'{table_slice.schema}.tmp_dagster_{table_slice.table}'
@@ -137,7 +138,11 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         connection.execute(f"{create_query}")
         try:
             connection.execute(
-                f"create table {table_slice.schema}.{table_slice.table} as ({select_query})"
+                f'''
+                CREATE TABLE {table_slice.schema}.{table_slice.table}
+                WITH (format = 'PARQUET') 
+                AS ({select_query})
+                '''
             )
         except TrinoQueryError as e:
             if e.error_name != 'TABLE_ALREADY_EXISTS':
@@ -148,7 +153,8 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
             )
         context.add_output_metadata(
             {
-                "run_data_files": obj
+                "file_paths": obj,
+                "tmp_query": create_query
             }
         )
         connection.execute(f"{drop_query}") #cleanup temp table
@@ -167,7 +173,11 @@ class FilePathTypeHandler(TrinoBaseTypeHandler):
         except TrinoQueryError as e:
             # TODO add messaging around this functionality is supported only with the Hive connector
             raise e
-        return [filepath for pathlist in res for filepath in pathlist]
+        filepaths = [filepath for pathlist in res for filepath in pathlist]
+        context.add_input_metadata({
+            'file_paths': filepaths
+        })
+        return filepaths
     
     @property
     def supported_types(self):
@@ -214,21 +224,24 @@ class ArrowTypeHandler(TrinoBaseTypeHandler):
     def handle_output(
             self, context: OutputContext, table_slice: TableSlice, obj: pyarrow.Table, connection
         ):
-        fs = context.resources.fsspec.fs
-        tmp_folder = context.resources.fsspec.tmp_folder
-        staging_path = os.path.join(tmp_folder, f"{table_slice.schema}_{table_slice.table}")
-        parquet.write_table(obj, staging_path, filesystem=fs)
-        files = fs.ls(staging_path)
-        self.file_handler.handle_output(context, table_slice, 
-                                            [f"{context.resources.fsspec.protocol}://{file}" for file in files], connection)
-        fs.rm(staging_path, recursive=True)
+        with context.resources.fsspec.get_fs() as fs:
+        # fs = context.resources.fsspec.fs
+            tmp_folder = os.path.join(context.resources.fsspec.tmp_folder, f"{table_slice.schema}_{table_slice.table}/")
+            staging_path = os.path.join(tmp_folder, f"{table_slice.schema}_{table_slice.table}.parquet")
+            fs.makedirs(tmp_folder, exist_ok=True)
+            parquet.write_table(obj, staging_path, filesystem=fs)
+            files = fs.ls(staging_path)
+            self.file_handler.handle_output(context, table_slice, 
+                                                [f"{context.resources.fsspec.protocol}://{file}" for file in files], connection)
+            fs.rm(staging_path, recursive=True)
 
     def load_input(self, context: InputContext, table_slice: TableSlice, connection) -> pyarrow.Table:
         if table_slice.partition_dimensions and len(context.asset_partition_keys) == 0:
             return pyarrow.Table()
         file_paths = self.file_handler.load_input(context, table_slice, connection)
-        fs = context.resources.fsspec.fs
-        arrow_df = parquet.ParquetDataset(file_paths, filesystem=fs)
+        # fs = context.resources.fsspec.fs
+        with context.resources.fsspec.get_fs() as fs:
+            arrow_df = parquet.ParquetDataset(file_paths, filesystem=fs)
         return arrow_df.read()
     
     @property
