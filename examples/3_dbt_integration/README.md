@@ -1,34 +1,29 @@
-# dbt with software-defined assets tutorial example
+# dbt-trino with software-defined assets and Trino IOManager tutorial example
 
-This example is meant to be used alongside the [Using dbt with Dagster software-defined assets tutorial](https://docs.dagster.io/integrations/dbt/using-dbt-with-dagster).
+This example is a Trino adaptation of dagster's original [Using dbt with Dagster software-defined assets tutorial](https://docs.dagster.io/integrations/dbt/using-dbt-with-dagster).
 
-The tutorial associated with this example demonstrates how to integrate dbt with Dagster using dbt's example [jaffle shop project](https://github.com/dbt-labs/jaffle_shop), the [dagster-dbt library](/\_apidocs/libraries/dagster-dbt), and a [DuckDB database](https://duckdb.org/).
+The tutorial associated with this example demonstrates how to integrate dbt with Dagster using dbt's example [jaffle shop project](https://github.com/dbt-labs/jaffle_shop), the [dagster-dbt library](/\_apidocs/libraries/dagster-dbt), and the dagster-trino `ArrowPandasTypeHandler`.
 
-This example contains:
-
-- A blank template project (located in `tutorial_template`) that can be used to follow along with the tutorial
-- A finished project (`tutorial_finished`) that contains the completed project produced by the tutorial
-
----
 
 ## Getting started
 
-To download this example, run:
+To run this example, you need:
 
-```shell
-dagster project from-example --name my-dagster-project --example tutorial_dbt_dagster
-```
+* A Trino Hive catalog (as `ArrowPandasTypeHandler` supports only Hive at the moment)
+* A Dagster `.env` file providing the environment variables required by the dbt project `profiles.yml`:
 
-To install this example and its dependencies, run:
-
-```shell
-cd my-dagster-project
-pip install -e ".[dev]"
-```
-
-At this point, you can view the **completed** project in Dagit by running:
-
-```shell
-cd tutorial_finished
-dagit
+```yml
+jaffle_shop:
+  target: dev
+  outputs:
+    dev:
+      type: trino
+      method: ldap 
+      user: "{{ env_var('TRINO_USER') }}"
+      password: "{{ env_var('TRINO_PWD') }}"
+      host: "{{ env_var('TRINO_HOST') }}"
+      database: "{{ env_var('TRINO_CATALOG') }}"
+      schema: "{{ env_var('DBT_TRINO_SCHEMA') }}"
+      port: "{{ env_var('TRINO_PORT') | as_number }}"
+      threads: 1
 ```
