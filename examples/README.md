@@ -26,3 +26,4 @@ The modules listed in this folder showcase different ways you can leverage `dags
 * [Using a Trino Resource](0_basic_resource/) The most basic way to interact with dagster-trino. For example, using Pandas or SQLAlchemy methods.
 * [Working with the dagster-trino IOManager](1_io_manager/) Including pushing storage and compute of Dagster assets as Trino Queries, as well as improving I/O performance over the Trino client by several orders of magnitude by letting the IOManager access the underlying Trino storage directly. 
 * [Extending the IOManager to support custom DataFrames](2_custom_dataframe_integrations/) with an example of how to extend the IOManager to support [Polars](https://www.pola.rs/) with 20 lines of code.
+* [Integration with dbt](3_dbt_integration/) showcasing how `dagster-trino` can work complementarily with `dbt-trino`, for exmaple, to automate fast Trino I/O from object storage upstream or downstream of a dbt project.

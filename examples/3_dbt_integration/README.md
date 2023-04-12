@@ -1,5 +1,7 @@
 # dbt-trino with software-defined assets and Trino IOManager tutorial example
 
+![Write Benchmark](../_static/dbt_assets.png "Write Benchmark")
+
 This example is a Trino adaptation of dagster's original [Using dbt with Dagster software-defined assets tutorial](https://docs.dagster.io/integrations/dbt/using-dbt-with-dagster).
 
 The tutorial associated with this example demonstrates how to integrate dbt with Dagster using dbt's example [jaffle shop project](https://github.com/dbt-labs/jaffle_shop), the [dagster-dbt library](/\_apidocs/libraries/dagster-dbt), and the dagster-trino `ArrowPandasTypeHandler`.
