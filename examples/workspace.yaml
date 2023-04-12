@@ -2,4 +2,5 @@ load_from:
   - python_module: 0_basic_resource
   - python_module: 1_io_manager
   - python_module: 2_custom_dataframe_integrations
+  - python_module: 3_dbt_integration
   
