@@ -1,5 +1,9 @@
 # dagster-trino 
 
+**Transform all of your data assets into [Software Defined Assets](https://docs.dagster.io/concepts/assets/software-defined-assets)**
+
+![dagster-trino](examples/_static/many_assets.png "dagster-trino")
+
 This repository contains an integration between Dagster and Trino that enables users to run Trino queries as part of their Dagster pipelines.
 
 ## Installation
