@@ -48,7 +48,7 @@ def define_trino_config():
 
     connector = Field(
         StringSource,
-        description='Whether to Use SQLAlchemy or a raw Trino connection',
+        description='Whether to Use SQLAlchemy, ibis, or a raw Trino connection',
         is_required=False
     )
 
