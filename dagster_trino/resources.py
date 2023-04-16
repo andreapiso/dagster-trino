@@ -88,6 +88,10 @@ class TrinoConnection:
                 if config.get(k) is not None
             }
             self.conn_args['auth'] = auth
+            if self.connector == 'ibis':
+                catalog = self.conn_args.get('catalog', None)
+                if catalog is not None:
+                    self.conn_args['database'] = self.conn_args.pop('catalog')
 
         self.log = log
 
@@ -105,6 +109,11 @@ class TrinoConnection:
             yield conn
             conn.close()
             engine.dispose()
+        elif self.connector == 'ibis':
+            import ibis
+            con = ibis.trino.connect(**self.conn_args)
+            yield con
+            del(con) #ibis depends on GC to clean connections
         else:
             conn = trino.dbapi.connect(**self.conn_args)
             yield conn
@@ -132,6 +141,8 @@ class TrinoConnection:
                         "DROP TABLE IF EXISTS MY_TABLE"
                     )
         """
+        if self.connector == 'ibis':
+            raise Exception("Function execute_query supports ['trino', 'sqlalchemy'] as connector values")
         check.str_param(sql, "sql")
         check.opt_inst_param(parameters, "parameters", (dict))
         check.bool_param(fetch_results, "fetch_results")
