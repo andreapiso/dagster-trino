@@ -31,14 +31,17 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    packages=find_packages(), #exclude=["dagster_trino_tests*"]
+    packages=find_packages(), 
+    exclude=["dagster_trino_tests*"],
     include_package_data=True,
     install_requires=[
         "trino",
         f"dagster{pin}",
+        f"dagit{pin}"
     ],
     extras_require={
         "pandas": ["pandas"],
+        "arrow": ["pyarrow"]
     },
     zip_safe=False,
 )
