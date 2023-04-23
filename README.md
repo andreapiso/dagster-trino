@@ -12,7 +12,14 @@ To install the integration, clone the repository and run the following from the 
 
 ```shell
 pip install -e .
-# Have not published the library on pypi as dagster-trino yet, in case the dagster folks want to keep that name. 
+
+# NOTE: Have not published the library on pypi as dagster-trino yet, in case the dagster folks want to keep that name. 
+```
+
+To use the object-storage side loading functionality, install the library with `arrow` extra dependencies:
+
+```shell
+pip install -e ".[arrow]"
 ```
 
 ## Configuration
